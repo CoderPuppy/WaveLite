@@ -34,7 +34,7 @@ WaveLite.event.bind( "editor:key:ctrl-i", function( editor )
 
 end )
 
-WaveLite.event.bind( "editor:key:ctrl-shift-i", function(editor)
+WaveLite.event.bind( "editor:key:shift-tab", function(editor)
 
 	editor.map( function( c )
 		editor.robot( function(cursor)

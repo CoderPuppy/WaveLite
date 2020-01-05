@@ -42,7 +42,8 @@ local plugin = {}
 
 function plugin.update()
 	for k, v in pairs( loaded ) do
-		if love.filesystem.getLastModified( v.path ) > v.time then
+		local modified = love.filesystem.getLastModified( v.path )
+		if modified and modified > v.time then
 			plugin.reload( k )
 		end
 	end

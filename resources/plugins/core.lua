@@ -99,8 +99,20 @@ WaveLite.event.bind( "editor:key:ctrl-s", function( editor )
 	editor.map( editor.select_line )
 end )
 
+WaveLite.event.bind( "editor:key:home", function( editor )
+	editor.map( editor.cursor_home, nil, { select = false, create = false, full = false } )
+end )
+
 WaveLite.event.bind( "editor:key:kp7", function( editor )
 	editor.map( editor.cursor_home, nil, { select = false, create = false, full = false } )
+end )
+
+WaveLite.event.bind( "editor:key:end", function( editor )
+	editor.map( editor.cursor_end, nil, { select = false, create = false, full = false } )
+end )
+
+WaveLite.event.bind( "editor:key:shift-home", function( editor )
+	editor.map( editor.cursor_home, nil, { select = true, create = false, full = false } )
 end )
 
 WaveLite.event.bind( "editor:key:kp1", function( editor )
@@ -109,6 +121,10 @@ end )
 
 WaveLite.event.bind( "editor:key:shift-kp7", function( editor )
 	editor.map( editor.cursor_home, nil, { select = true, create = false, full = false } )
+end )
+
+WaveLite.event.bind( "editor:key:shift-end", function( editor )
+	editor.map( editor.cursor_end, nil, { select = true, create = false, full = false } )
 end )
 
 WaveLite.event.bind( "editor:key:shift-kp1", function( editor )
