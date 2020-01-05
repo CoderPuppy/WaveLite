@@ -15,11 +15,41 @@ WaveLite.event.bind( "editor:touch", function(editor, position)
 	system.show_keyboard()
 end )
 
+WaveLite.event.bind( "editor:double-touch", function(editor, position)
+	if position[4] == 0 then
+		editor
+			.map( editor.remove, editor.filters.negate( editor.filters.first() ) )
+			.map( editor.deselect )
+			.map( editor.cursor_home, nil, { full = true } )
+			.map( editor.cursor_end, nil, { full = true, select = true } )
+	else
+		editor
+			.set_cursor( position )
+			.map( editor.cursor_expand )
+	end
+	system.show_keyboard()
+end )
+
 WaveLite.event.bind( "editor:ctrl-touch", function(editor, position)
 	if position[4] == 0 then
 		editor.new_cursor( position ).map( editor.select_line )
 	else
 		editor.new_cursor( position )
+	end
+	system.show_keyboard()
+end )
+
+WaveLite.event.bind( "editor:ctrl-double-touch", function(editor, position)
+	if position[4] == 0 then
+		editor
+			.map( editor.remove, editor.filters.negate( editor.filters.first() ) )
+			.map( editor.deselect )
+			.map( editor.cursor_home, nil, { full = true } )
+			.map( editor.cursor_end, nil, { full = true, select = true } )
+	else
+		editor
+			.new_cursor( position )
+			.map( editor.cursor_expand, editor.filters.last() )
 	end
 	system.show_keyboard()
 end )
@@ -31,6 +61,14 @@ end )
 
 WaveLite.event.bind( "editor:move", function(editor, position)
 	editor.map( editor.select_to, editor.filters.last(), position )
+end )
+
+WaveLite.event.bind( "editor:key:ctrl-s", function( editor )
+	editor.save()
+end )
+
+WaveLite.event.bind( "editor:file-modified #mode=file", function( editor )
+	editor.refresh()
 end )
 
 WaveLite.event.bind( "editor:key:ctrl-c", function( editor )
@@ -75,28 +113,12 @@ WaveLite.event.bind( "editor:key:ctrl-v", function( editor )
 	editor.map( editor.write, nil, system.paste() )
 end )
 
-WaveLite.event.bind( "editor:key:ctrl-r", function( editor ) -- remove cursors from the end of a line
-	editor.map( editor.remove, editor.filters.eofline ).resetCursorBlink()
-end )
-
-WaveLite.event.bind( "editor:key:ctrl-d", function( editor ) -- deselect all cursors
-	editor.map( editor.deselect )
-end )
-
-WaveLite.event.bind( "editor:key:ctrl-l", function( editor ) -- select the line of each cursor
-	editor.map( editor.select_line )
-end )
-
 WaveLite.event.bind( "editor:key:ctrl-a", function( editor ) -- select all text
 	editor
 		.map( editor.remove, editor.filters.negate( editor.filters.first() ) )
 		.map( editor.deselect )
 		.map( editor.cursor_home, nil, { full = true } )
 		.map( editor.cursor_end, nil, { full = true, select = true } )
-end )
-
-WaveLite.event.bind( "editor:key:ctrl-s", function( editor )
-	editor.map( editor.select_line )
 end )
 
 WaveLite.event.bind( "editor:key:home", function( editor )
@@ -237,4 +259,12 @@ end )
 
 WaveLite.event.bind( "editor:text", function( editor, text )
 	editor.map( editor.write, nil, text )
+end )
+
+WaveLite.event.bind( "editor:key:ctrl-tab", function( editor )
+	editor.tabs().after(editor).focus()
+end )
+
+WaveLite.event.bind( "editor:key:ctrl-shift-tab", function( editor )
+	editor.tabs().before(editor).focus()
 end )

@@ -12,6 +12,7 @@ local newEditorAPI = require "src.lib.apis.editor"
 local SCROLLBARSIZE = 20
 local SCROLLBARPADDING = 3
 local SCROLLBARMINSIZE = 64
+local SCROLLSPEED = 35
 
 local function mouseToPosition( editor, x, y )
 	local font = libstyle.get( editor.style, "editor:Font" )
@@ -29,8 +30,10 @@ local function mouseToPosition( editor, x, y )
 	local tline = editor.lines[line]
 	local totalWidth = 0
 
-	if relativeX < 0 then
-		return { libcursor.toPosition( editor.lines, line, 1 ), line, 1, 0 }
+	if relativeX < -codePadding then
+		return { libcursor.toPosition( editor.lines, line, 1 ), line, 1, 1 }
+	elseif relativeX < 0 then
+		relativeX = 0
 	end
 
 	for i = 1, #tline do
@@ -62,28 +65,33 @@ end
 local function rescrollX( editor )
 	local font = libstyle.get( editor.style, "editor:Font" )
 	local space = font:getWidth " "
-	editor.scrollX = 
+	editor.scrollX = math.floor(
 		math.max( 0, 
 			math.min( editor.contentWidth + 2 * space - editor.viewWidth,
-				editor.scrollBottomBarLeft * (editor.contentWidth - editor.viewWidth) / (editor.scrollBottom.width - SCROLLBARPADDING * 2 - editor.scrollBottomBarSize)
+				editor.scrollBottomBarLeft * ((editor.contentWidth + 2 * space) - editor.viewWidth) / (editor.scrollBottom.width - SCROLLBARPADDING * 2 - editor.scrollBottomBarSize)
 			)
 		)
+	)
 end
 
 local function rescrollY( editor )
-	editor.scrollY = 
+	editor.scrollY = math.floor(
 		math.max( 0, 
 			math.min( editor.contentHeight - editor.viewHeight,
 				editor.scrollRightBarTop * (editor.contentHeight - editor.viewHeight) / (editor.scrollRight.height - SCROLLBARPADDING * 2 - editor.scrollRightBarSize)
 			)
 		)
+	)
 end
 
-local function newCodeEditor( mode, title, content )
+local function newCodeEditor( mode, title, content, path )
 
 	local editor = UIPanel.new()
 
+	editor.type = "editor"
 	editor.mode = mode
+	editor.path = path
+	editor.opentime = os.time()
 	editor.title = title or "untitled"
 	editor.style = libresource.load( "style", "core:light" )
 	editor.lines = util.splitlines( content or "" )
@@ -111,6 +119,7 @@ local function newCodeEditor( mode, title, content )
 	editor.cursorblink = 0
 	editor.langname = "core:plain text"
 	editor.stylename = "core:light"
+	editor.clicked = false
 
 	editor.api = newEditorAPI( editor )
 
@@ -231,6 +240,11 @@ local function newCodeEditor( mode, title, content )
 		end
 
 		editor.cursorblink = editor.cursorblink + dt
+
+		if self.path and love.filesystem.isFile( self.path ) and love.filesystem.getLastModified( self.path ) > self.opentime then
+			self.opentime = os.time()
+			libevent.invoke( "editor:file-modified", self.api )
+		end
 	end
 
 	function editor:onFocus()
@@ -249,7 +263,10 @@ local function newCodeEditor( mode, title, content )
 		libevent.invoke( "editor:" ..
 			(util.isCtrlHeld() and "ctrl-" or "") ..
 			(util.isAltHeld() and "alt-" or "") .. 
-			(util.isShiftHeld() and "shift-" or "") .. "touch", editor.api, mouseToPosition( editor, x, y ), button ) -- change to use char coords
+			(util.isShiftHeld() and "shift-" or "") ..
+			(editor.clicked and os.clock() - editor.clicked < 0.2 and "double-" or "") ..
+			"touch", editor.api, mouseToPosition( editor, x, y ), button ) -- change to use char coords
+		editor.clicked = (not editor.clicked or os.clock() - editor.clicked >= 0.2) and os.clock() or false
 	end
 
 	function editor:onMove( x, y, button )
@@ -282,6 +299,11 @@ local function newCodeEditor( mode, title, content )
 		if self.focussed then
 			libevent.invoke( "editor:text", editor.api, text )
 		end
+	end
+
+	function editor:onWheelMoved( x, y )
+		self.scrollY = math.max( 0, math.min( self.scrollY - y * SCROLLSPEED, self.contentHeight - self.viewHeight ) )
+		self.scrollX = math.max( 0, math.min( self.scrollX - x * SCROLLSPEED, self.contentWidth - self.viewWidth ) )
 	end
 
 	return editor

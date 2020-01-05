@@ -30,6 +30,37 @@ local function newEditorAPI( editor )
 	api.filters = util.protected_table( filters )
 	api.positions = util.protected_table( positions )
 
+	function api.refresh()
+		if editor.path then
+			editor.lines = util.splitlines( love.filesystem.isFile( editor.path ) and love.filesystem.read( editor.path ) or "" )
+			libformatting.format( editor.lines, editor.formatting )
+
+			for i = 1, #editor.cursors do
+				if editor.cursors[i].position[2] > #editor.lines then
+					editor.cursors[i].position[2] = #editor.lines
+				end
+				if editor.cursors[i].selection and editor.cursors[i].selection[2] > #editor.lines then
+					editor.cursors[i].selection[2] = #editor.lines
+				end
+				if editor.cursors[i].position[3] > #editor.lines[editor.cursors[i].position[2]] then
+					editor.cursors[i].position[3] = #editor.lines[editor.cursors[i].position[2]] + 1
+				end
+				if editor.cursors[i].selection and editor.cursors[i].selection[3] > #editor.lines[editor.cursors[i].selection[2]] then
+					editor.cursors[i].selection[3] = #editor.lines[editor.cursors[i].selection[2]] + 1
+				end
+			end
+
+			libcursor.merge( editor.cursors )
+		end
+	end
+
+	function api.save()
+		if editor.path then
+			love.filesystem.write( editor.path, table.concat( editor.lines, "\n" ) )
+			editor.opentime = os.time()
+		end
+	end
+
 	function api.tabs()
 		return editor.parent.api
 	end
@@ -89,6 +120,14 @@ local function newEditorAPI( editor )
 
 	function api.mode()
 		return editor.mode
+	end
+
+	function api.setPath( path )
+		editor.path = path
+	end
+
+	function api.path()
+		return editor.path
 	end
 
 	function api.write( cursor, text )
@@ -246,6 +285,14 @@ local function newEditorAPI( editor )
 		end
 
 		return public
+	end
+
+	function api.cursor_expand( cursor )
+		local a, b = libcursor.order( cursor )
+		cursor.selection = libcursor.expandleft( editor.lines, a )
+		cursor.position = libcursor.expandright( editor.lines, b )
+		
+		tryMerge()
 	end
 
 	function api.cursor_home( cursor, options )
@@ -417,19 +464,39 @@ local function newEditorAPI( editor )
 		return public
 	end
 
-	function filters.first()
+	function filters.first( n )
 		local i = 0
+		n = n or 1
 		return function()
 			i = i + 1
-			return i == 1
+			return i <= n
 		end
 	end
 
-	function filters.last()
+	function filters.last( n )
 		local i = 0
+		n = n or 1
 		return function()
 			i = i + 1
-			return i == #editor.cursors
+			return i > #editor.cursors - n
+		end
+	end
+
+	function filters.only( n )
+		local i = 0
+		n = n or 1
+		return function()
+			i = i + 1
+			return i == n
+		end
+	end
+
+	function filters.except( n )
+		local i = 0
+		n = n or 1
+		return function()
+			i = i + 1
+			return i ~= n
 		end
 	end
 
@@ -441,19 +508,9 @@ local function newEditorAPI( editor )
 		return cursor.position[3] == 1
 	end
 
-	function filters.count_start( i )
-			i = i or 1
-		return function()
-			i = i - 1
-			return i >= 0
-		end
-	end
-
-	function filters.count_end( i )
-		i = #editor.cursors - (i or 1)
-		return function()
-			i = i - 1
-			return i < 0
+	function filters.has_selection()
+		return function( cursor )
+			return cursor.selection ~= false
 		end
 	end
 

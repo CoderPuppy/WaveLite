@@ -1,4 +1,24 @@
 
+local function copy( a, b )
+	if love.filesystem.isDirectory( a ) then
+		for i, file in ipairs( love.filesystem.getDirectoryItems( a ) ) do
+			copy( a .. "/" .. file, b .. "/" .. file )
+		end
+	else
+		love.filesystem.write( b, love.filesystem.read( a ) )
+	end
+end
+
+if not love.filesystem.isDirectory "plugins" then
+	copy( "data/plugins", "plugins" )
+end
+if not love.filesystem.isDirectory "user" then
+	copy( "data/user", "user" )
+end
+if not love.filesystem.isDirectory "resources" then
+	copy( "data/resources", "resources" )
+end
+
 local UIPanel = require "src.elements.UIPanel"
 local plugin = require "src.lib.plugin"
 local WaveLite = require "src.WaveLite"
